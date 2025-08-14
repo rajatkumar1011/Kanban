@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kanban</title>
+    <title>KANBAN</title>
     
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -35,7 +35,7 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
         body {
             font-family: 'Roboto', sans-serif;
             transition: background-color 0.5s ease;
@@ -229,7 +229,7 @@
                             const { initializeApp, getAuth, getFirestore, onAuthStateChanged, signInWithCustomToken, signInAnonymously } = window.firebase;
                             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
                             if (Object.keys(firebaseConfig).length === 0) {
-                                setError("Offline mode: Data will not be saved.");
+                                setError("Pin this Webpage and Don't Refresh!");
                                 setIsAuthReady(true); return;
                             }
                             const app = initializeApp(firebaseConfig);
@@ -253,7 +253,7 @@
             useEffect(() => {
                 if (!isAuthReady) return;
                 if (!db || !userId) {
-                    setColumns({ todo: { name: 'To Do', items: [{ id: '1', content: 'Brainstorm new feature ideas' }] }, inProgress: { name: 'In Progress', items: [] }, done: { name: 'Done', items: [] } });
+                    setColumns({ todo: { name: 'To Do', items: [] }, inProgress: { name: 'In Progress', items: [] }, done: { name: 'Done', items: [] } });
                     setIsLoading(false); return;
                 }
                 const { doc, onSnapshot } = window.firebase;
@@ -275,7 +275,7 @@
             }, [db, userId, appId]);
 
             const initializeDefaultBoard = () => {
-                const defaultColumns = { todo: { name: 'To Do', items: [{ id: '1', content: 'Brainstorm new feature ideas' }] }, inProgress: { name: 'In Progress', items: [] }, done: { name: 'Done', items: [] } };
+                const defaultColumns = { todo: { name: 'To Do', items: [] }, inProgress: { name: 'In Progress', items: [] }, done: { name: 'Done', items: [] } };
                 setColumns(defaultColumns);
                 updateFirestoreBoard(defaultColumns);
             };
@@ -296,7 +296,7 @@
                 }
 
                 setIsBreakingDown(task.id); setError(null);
-                const prompt = `You are a project management assistant. Break down this task into smaller, actionable sub-tasks: "${task.content}". Respond as a JSON object: {"subtasks": ["sub-task 1", "sub-task 2"]}`;
+                const prompt = `You are a project management assistant. Break down this task into a list of smaller, actionable sub-tasks (maximum of 5). The main task is: "${task.content}". Respond as a JSON object: {"subtasks": ["sub-task 1", "sub-task 2"]}`;
                 const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } };
                 const apiKey = "AIzaSyBd5Nqt9n5RSbPBzDTAZ1LCBcIw52i4Zkg";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
@@ -304,8 +304,14 @@
                     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) throw new Error(`API error: ${response.status}`);
                     const result = await response.json();
-                    const subtasks = JSON.parse(result.candidates[0].content.parts[0].text).subtasks;
+                    let subtasks = JSON.parse(result.candidates[0].content.parts[0].text).subtasks;
                     if (!subtasks?.length) throw new Error("AI did not provide sub-tasks.");
+                    
+                    // Enforce the 5-task limit as a safeguard
+                    if (subtasks.length > 5) {
+                        subtasks = subtasks.slice(0, 5);
+                    }
+
                     const newTasks = subtasks.map(t => ({ id: crypto.randomUUID(), content: t }));
                     let newColumns = JSON.parse(JSON.stringify(columns));
                     newColumns.todo.items = [...newTasks, ...newColumns.todo.items];
@@ -363,7 +369,7 @@
                     {taskToDelete && <ConfirmationModal onConfirm={handleConfirmDelete} onCancel={() => setTaskToDelete(null)} />}
                     
                     <header className="max-w-7xl mx-auto mb-10 flex justify-between items-center w-full">
-                        <h1 className="header-title text-3xl font-bold">Kanban Board</h1>
+                        <h1 className="header-title text-3xl font-black uppercase tracking-widest">KANBAN</h1>
                         <div className="flex items-center gap-2 p-1 bg-gray-200/50 rounded-lg">
                             <button onClick={() => setTheme('light')} className={`theme-btn p-1.5 rounded-md ${theme === 'light' ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.95l.707-.707a1 1 0 10-1.414-1.414l-.707.707a1 1 0 001.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" /></svg>
