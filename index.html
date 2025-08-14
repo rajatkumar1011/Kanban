@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel to transpile JSX in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // This structure is necessary to make firebase functions available to the React component script
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.firebase = {
+            initializeApp,
+            getAuth,
+            signInAnonymously,
+            onAuthStateChanged,
+            signInWithCustomToken,
+            getFirestore,
+            doc,
+            setDoc,
+            onSnapshot
+        };
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark background */
+        }
+        .gemini-btn-spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .task-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .task-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .column {
+            background-color: #1f2937; /* Darker column background */
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        // --- Helper Components ---
+        const Confetti = ({ onFinish }) => {
+            const canvasRef = useRef(null);
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                const particles = [];
+                const colors = ["#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#1e40af"];
+                for (let i = 0; i < 200; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height - canvas.height,
+                        radius: Math.random() * 4 + 1,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        speed: Math.random() * 3 + 2,
+                        tilt: Math.random() * 10 - 5,
+                        tiltAngle: 0,
+                        tiltAngleIncrement: Math.random() * 0.07 + 0.05
+                    });
+                }
+                let animationFrameId;
+                const draw = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    particles.forEach(p => {
+                        ctx.beginPath();
+                        ctx.lineWidth = p.radius;
+                        ctx.strokeStyle = p.color;
+                        ctx.moveTo(p.x + p.tilt, p.y);
+                        ctx.lineTo(p.x, p.y + p.tilt);
+                        ctx.stroke();
+                        p.y += p.speed;
+                        p.tiltAngle += p.tiltAngleIncrement;
+                        p.tilt = Math.sin(p.tiltAngle) * 15;
+                        if (p.y > canvas.height) {
+                            p.x = Math.random() * canvas.width;
+                            p.y = -20;
+                        }
+                    });
+                    animationFrameId = requestAnimationFrame(draw);
+                };
+                draw();
+                const timer = setTimeout(() => {
+                    cancelAnimationFrame(animationFrameId);
+                    if (onFinish) onFinish();
+                }, 4000);
+                return () => { clearTimeout(timer); cancelAnimationFrame(animationFrameId); };
+            }, [onFinish]);
+            return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full z-50 pointer-events-none" />;
+        };
+
+        const ConfirmationModal = ({ onConfirm, onCancel, message }) => {
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">{message}</h3>
+                        <div className="flex justify-end gap-4">
+                            <button onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                            <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App Component ---
+        const App = () => {
+            const [db, setDb] = useState(null);
+            const [userId, setUserId] = useState(null);
+            const [isAuthReady, setIsAuthReady] = useState(false);
+            const [columns, setColumns] = useState(null);
+            const [newTaskContent, setNewTaskContent] = useState('');
+            const [isLoading, setIsLoading] = useState(true);
+            const [showConfetti, setShowConfetti] = useState(false);
+            const [error, setError] = useState(null);
+            const [isBreakingDown, setIsBreakingDown] = useState(null);
+            const [taskToDelete, setTaskToDelete] = useState(null);
+
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'kanban-app-default';
+            const COLUMN_ORDER = ['todo', 'inProgress', 'done'];
+
+            useEffect(() => {
+                const firebaseCheckInterval = setInterval(() => {
+                    if (window.firebase) {
+                        clearInterval(firebaseCheckInterval);
+                        try {
+                            const { initializeApp, getAuth, getFirestore, onAuthStateChanged, signInWithCustomToken, signInAnonymously } = window.firebase;
+                            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                            if (Object.keys(firebaseConfig).length === 0) {
+                                setError("Firebase config not available. Persistence is disabled.");
+                                setIsAuthReady(true); return;
+                            }
+                            const app = initializeApp(firebaseConfig);
+                            const authInstance = getAuth(app);
+                            const dbInstance = getFirestore(app);
+                            setDb(dbInstance);
+                            onAuthStateChanged(authInstance, async (user) => {
+                                if (user) { setUserId(user.uid); } 
+                                else {
+                                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                        await signInWithCustomToken(authInstance, __initial_auth_token);
+                                    } else { await signInAnonymously(authInstance); }
+                                }
+                                setIsAuthReady(true);
+                            });
+                        } catch (err) {
+                            console.error("Firebase init error:", err);
+                            setError("Could not connect to the database.");
+                            setIsAuthReady(true);
+                        }
+                    }
+                }, 100);
+            }, []);
+
+            useEffect(() => {
+                if (!isAuthReady) return;
+                if (!db || !userId) {
+                    setColumns({
+                        todo: { name: 'To Do', items: [{ id: '1', content: 'Design a new landing page' }] },
+                        inProgress: { name: 'In Progress', items: [] },
+                        done: { name: 'Done', items: [] },
+                    });
+                    setIsLoading(false);
+                    return;
+                }
+                const { doc, onSnapshot } = window.firebase;
+                const docRef = doc(db, 'artifacts', appId, 'users', userId);
+                const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists() && docSnap.data().columns) {
+                        setColumns(docSnap.data().columns);
+                    } else {
+                        initializeDefaultBoard();
+                    }
+                    setIsLoading(false);
+                }, (err) => {
+                    console.error("Firestore error:", err);
+                    setError("Failed to sync data.");
+                    setIsLoading(false);
+                });
+                return () => unsubscribe();
+            }, [isAuthReady, db, userId, appId]);
+
+            const updateFirestoreBoard = useCallback(async (newColumns) => {
+                if (!db || !userId) return;
+                try {
+                    const { doc, setDoc } = window.firebase;
+                    await setDoc(doc(db, 'artifacts', appId, 'users', userId), { columns: newColumns });
+                } catch (err) {
+                    console.error("Error updating Firestore:", err);
+                    setError("Failed to save changes.");
+                }
+            }, [db, userId, appId]);
+
+            const initializeDefaultBoard = () => {
+                const defaultColumns = {
+                    todo: { name: 'To Do', items: [{ id: '1', content: 'Design a new landing page' }] },
+                    inProgress: { name: 'In Progress', items: [] },
+                    done: { name: 'Done', items: [] },
+                };
+                setColumns(defaultColumns);
+                updateFirestoreBoard(defaultColumns);
+            };
+
+            const handleBreakdownTask = async (task, sourceColumnId) => {
+                setIsBreakingDown(task.id);
+                setError(null);
+                const prompt = `You are a project management assistant. Break down this task into smaller, actionable sub-tasks: "${task.content}". Respond as a JSON object: {"subtasks": ["sub-task 1", "sub-task 2"]}`;
+                const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                try {
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`API error: ${response.status}`);
+                    const result = await response.json();
+                    const subtasks = JSON.parse(result.candidates[0].content.parts[0].text).subtasks;
+                    if (!subtasks?.length) throw new Error("AI did not provide sub-tasks.");
+                    
+                    const newTasks = subtasks.map(content => ({ id: crypto.randomUUID(), content }));
+                    let newColumns = JSON.parse(JSON.stringify(columns));
+                    newColumns.todo.items = [...newTasks, ...newColumns.todo.items];
+                    const sourceCol = newColumns[sourceColumnId];
+                    sourceCol.items = sourceCol.items.filter(t => t.id !== task.id);
+                    newColumns.done.items.unshift({ ...task, content: `[Broken Down] ${task.content}` });
+                    setColumns(newColumns);
+                    updateFirestoreBoard(newColumns);
+                    setShowConfetti(true);
+                } catch (err) {
+                    setError(`✨ AI assistant failed: ${err.message}`);
+                } finally {
+                    setIsBreakingDown(null);
+                }
+            };
+
+            const handleAddTask = (e) => {
+                e.preventDefault();
+                if (!newTaskContent.trim() || !columns) return;
+                const newTask = { id: crypto.randomUUID(), content: newTaskContent.trim() };
+                const newColumns = { ...columns, todo: { ...columns.todo, items: [newTask, ...columns.todo.items] } };
+                setColumns(newColumns);
+                updateFirestoreBoard(newColumns);
+                setNewTaskContent('');
+            };
+            
+            const handleConfirmDelete = () => {
+                if (!taskToDelete) return;
+                const { task, columnId } = taskToDelete;
+                let newColumns = JSON.parse(JSON.stringify(columns));
+                newColumns[columnId].items = newColumns[columnId].items.filter(t => t.id !== task.id);
+                setColumns(newColumns);
+                updateFirestoreBoard(newColumns);
+                setTaskToDelete(null);
+            };
+
+            const handleDragStart = (e, task, sourceColumnId) => { e.dataTransfer.setData('task', JSON.stringify(task)); e.dataTransfer.setData('sourceColumnId', sourceColumnId); e.currentTarget.classList.add('opacity-50'); };
+            const handleDragEnd = (e) => e.currentTarget.classList.remove('opacity-50');
+            const handleDragOver = (e) => e.preventDefault();
+
+            const handleDrop = (e, destColumnId) => {
+                e.preventDefault();
+                if (!columns) return;
+                const task = JSON.parse(e.dataTransfer.getData('task'));
+                const sourceColumnId = e.dataTransfer.getData('sourceColumnId');
+                if (sourceColumnId === destColumnId) return;
+                let newColumns = JSON.parse(JSON.stringify(columns));
+                newColumns[sourceColumnId].items = newColumns[sourceColumnId].items.filter(t => t.id !== task.id);
+                newColumns[destColumnId].items.unshift(task);
+                setColumns(newColumns);
+                updateFirestoreBoard(newColumns);
+                if (destColumnId === 'done') setShowConfetti(true);
+            };
+
+            if (isLoading) {
+                return <div className="flex items-center justify-center h-screen text-2xl font-semibold text-gray-400">Loading your board...</div>;
+            }
+
+            return (
+                <div className="min-h-screen text-white p-4 sm:p-6 lg:p-8">
+                    {showConfetti && <Confetti onFinish={() => setShowConfetti(false)} />}
+                    {taskToDelete && <ConfirmationModal message="Are you sure you want to delete this task?" onConfirm={handleConfirmDelete} onCancel={() => setTaskToDelete(null)} />}
+                    
+                    <header className="text-center mb-10">
+                        <h1 className="text-4xl sm:text-5xl font-bold text-white">AI Kanban Board</h1>
+                        <p className="text-gray-400 mt-2">Organize, Prioritize, and Execute with AI Assistance</p>
+                        {error && <div className="mt-4 max-w-xl mx-auto text-red-400 bg-red-900/50 p-3 rounded-lg">{error}</div>}
+                        {userId && <div className="mt-2 text-xs text-gray-500">ID: {userId}</div>}
+                    </header>
+
+                    <main>
+                        <div className="max-w-xl mx-auto mb-10">
+                            <form onSubmit={handleAddTask} className="flex gap-2 p-1.5 bg-gray-900/50 rounded-lg border border-gray-700">
+                                <input type="text" value={newTaskContent} onChange={(e) => setNewTaskContent(e.target.value)} placeholder="Add a new task..." className="flex-grow p-3 bg-transparent text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
+                                <button type="submit" className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500 transition-transform transform hover:scale-105">Add Task</button>
+                            </form>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                            {columns && COLUMN_ORDER.map(columnId => {
+                                const column = columns[columnId];
+                                if (!column) return null;
+                                return (
+                                    <div key={columnId} className="column rounded-xl p-4 flex flex-col" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, columnId)}>
+                                        <h2 className="text-lg font-semibold mb-4 text-gray-300 pb-2 border-b-2 border-gray-700 flex justify-between items-center">
+                                            <span>{column.name}</span>
+                                            <span className="text-sm font-medium bg-gray-600 text-gray-200 rounded-full px-2.5 py-0.5">{column.items.length}</span>
+                                        </h2>
+                                        <div className="flex-grow min-h-[200px] space-y-4">
+                                            {column.items.map(task => (
+                                                <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task, columnId)} onDragEnd={handleDragEnd} className="task-card bg-gray-800 p-4 rounded-lg shadow-md cursor-grab active:cursor-grabbing border border-gray-700">
+                                                    <div className="flex justify-between items-start">
+                                                        <p className="text-gray-200 pr-4">{task.content}</p>
+                                                        <button onClick={() => setTaskToDelete({task, columnId})} className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                                        </button>
+                                                    </div>
+                                                    {(columnId === 'todo' || columnId === 'inProgress') && (
+                                                        <button onClick={() => handleBreakdownTask(task, columnId)} disabled={isBreakingDown} className="mt-4 flex items-center justify-center gap-2 w-full text-sm px-3 py-1.5 bg-indigo-600/80 text-white rounded-md hover:bg-indigo-700/80 transition-all disabled:bg-indigo-500/50 disabled:cursor-not-allowed">
+                                                            {isBreakingDown === task.id ? <><div className="gemini-btn-spinner"></div><span>Thinking...</span></> : <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg><span>Breakdown Task</span></>}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {column.items.length === 0 && <div className="flex items-center justify-center h-full text-gray-500 italic border-2 border-dashed border-gray-700 rounded-lg">Drop tasks here</div>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
