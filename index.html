@@ -17,7 +17,6 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
-        // This structure is necessary to make firebase functions available to the React component script
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -36,32 +35,74 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Dark background */
+            font-family: 'Roboto', sans-serif;
+            transition: background-color 0.5s ease;
         }
-        .gemini-btn-spinner {
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
+
+        /* Light Theme (Default) */
+        .theme-light { background-color: #f8f9fa; color: #1a1a1a; }
+        .theme-light .column { background-color: #f1f3f5; }
+        .theme-light .task-card { background-color: #ffffff; }
+        .theme-light .header-title { color: #1a1a1a; }
+        .theme-light .column-title { color: #495057; }
+        .theme-light .task-text { color: #212529; }
+        .theme-light .add-task-input { background-color: #ffffff; border-color: #dee2e6; color: #212529; }
+        .theme-light .add-task-input::placeholder { color: #adb5bd; }
+        .theme-light .empty-column { border-color: #dee2e6; color: #adb5bd; }
+        .theme-light .footer-text { color: #6c757d; }
+        .theme-light .social-icon { color: #495057; }
+        .theme-light .social-icon:hover { color: #007aff; }
+        
+        /* Dark Theme */
+        .theme-dark { background-color: #111827; color: #d1d5db; }
+        .theme-dark .column { background-color: #1f2937; border-color: #374151; }
+        .theme-dark .task-card { background-color: #374151; }
+        .theme-dark .header-title { color: #f9fafb; }
+        .theme-dark .column-title { color: #d1d5db; }
+        .theme-dark .task-text { color: #e5e7eb; }
+        .theme-dark .add-task-input { background-color: #1f2937; border-color: #4b5563; color: #f9fafb; }
+        .theme-dark .add-task-input::placeholder { color: #6b7280; }
+        .theme-dark .empty-column { border-color: #4b5563; color: #6b7280; }
+        .theme-dark .theme-btn.active { background-color: #4b5563; }
+        .theme-dark .footer-text { color: #9ca3af; }
+        .theme-dark .social-icon { color: #9ca3af; }
+        .theme-dark .social-icon:hover { color: #ffffff; }
+
+        /* Gradient Theme */
+        .theme-gradient {
+            background: linear-gradient(-45deg, #d8b4fe, #e9d5ff, #fbcfe8, #fecaca, #d1fae5, #fef9c3, #dbeafe, #d8b4fe);
+            background-size: 400% 400%;
+            animation: gradientBG 20s ease infinite;
+            color: #1a1a1a;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .theme-gradient .column { background-color: rgba(248, 249, 250, 0.8); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.5); }
+        .theme-gradient .task-card { background-color: #ffffff; }
+        .theme-gradient .header-title { color: #1a1a1a; }
+        .theme-gradient .column-title { color: #495057; }
+        .theme-gradient .task-text { color: #212529; }
+        .theme-gradient .add-task-input { background-color: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px); border-color: #dee2e6; color: #212529; }
+        .theme-gradient .add-task-input::placeholder { color: #adb5bd; }
+        .theme-gradient .empty-column { border-color: #dee2e6; color: #adb5bd; }
+        .theme-gradient .footer-text { color: #6c757d; }
+        .theme-gradient .social-icon { color: #495057; }
+        .theme-gradient .social-icon:hover { color: #007aff; }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
-        .task-card {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        }
-        .task-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .column {
-            background-color: #1f2937; /* Darker column background */
-        }
+
+        .gemini-btn-spinner { border: 2px solid rgba(0, 0, 0, 0.1); border-top-color: #333; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; }
+        .theme-dark .gemini-btn-spinner { border-color: rgba(255,255,255,0.2); border-top-color: #fff; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .task-card { transition: transform 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.08); }
+        .task-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.06); }
+        .task-card .actions { opacity: 0; transition: opacity 0.2s ease; }
+        .task-card:hover .actions { opacity: 1; }
     </style>
 </head>
 <body>
@@ -74,38 +115,46 @@
         const Confetti = ({ onFinish }) => {
             const canvasRef = useRef(null);
             useEffect(() => {
-                const canvas = canvasRef.current;
-                if (!canvas) return;
+                const canvas = canvasRef.current; if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
+                canvas.width = window.innerWidth; canvas.height = window.innerHeight;
                 const particles = [];
-                const colors = ["#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#1e40af"];
+                const colors = ["#007aff", "#34c759", "#ff9500", "#ff3b30", "#af52de"];
                 for (let i = 0; i < 200; i++) {
                     particles.push({
                         x: Math.random() * canvas.width,
                         y: Math.random() * canvas.height - canvas.height,
-                        radius: Math.random() * 4 + 1,
+                        radius: Math.random() * 4 + 2,
                         color: colors[Math.floor(Math.random() * colors.length)],
                         speed: Math.random() * 3 + 2,
-                        tilt: Math.random() * 10 - 5,
+                        angle: Math.random() * 360,
+                        tilt: Math.random() * 20 - 10,
                         tiltAngle: 0,
-                        tiltAngleIncrement: Math.random() * 0.07 + 0.05
+                        tiltAngleIncrement: Math.random() * 0.07 + 0.05,
                     });
                 }
                 let animationFrameId;
                 const draw = () => {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.font = 'bold 72px Roboto, sans-serif';
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('Congrats!', canvas.width / 2, canvas.height / 2);
+
                     particles.forEach(p => {
                         ctx.beginPath();
                         ctx.lineWidth = p.radius;
                         ctx.strokeStyle = p.color;
-                        ctx.moveTo(p.x + p.tilt, p.y);
-                        ctx.lineTo(p.x, p.y + p.tilt);
+                        ctx.moveTo(p.x + p.tilt + (p.radius / 2), p.y);
+                        ctx.lineTo(p.x + p.tilt, p.y + p.tilt + (p.radius / 2));
                         ctx.stroke();
+
                         p.y += p.speed;
                         p.tiltAngle += p.tiltAngleIncrement;
                         p.tilt = Math.sin(p.tiltAngle) * 15;
+
                         if (p.y > canvas.height) {
                             p.x = Math.random() * canvas.width;
                             p.y = -20;
@@ -114,28 +163,33 @@
                     animationFrameId = requestAnimationFrame(draw);
                 };
                 draw();
-                const timer = setTimeout(() => {
-                    cancelAnimationFrame(animationFrameId);
-                    if (onFinish) onFinish();
-                }, 4000);
+                const timer = setTimeout(() => { cancelAnimationFrame(animationFrameId); if (onFinish) onFinish(); }, 4000);
                 return () => { clearTimeout(timer); cancelAnimationFrame(animationFrameId); };
             }, [onFinish]);
             return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full z-50 pointer-events-none" />;
         };
 
-        const ConfirmationModal = ({ onConfirm, onCancel, message }) => {
-            return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">{message}</h3>
-                        <div className="flex justify-end gap-4">
-                            <button onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                            <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
-                        </div>
+        const ConfirmationModal = ({ onConfirm, onCancel }) => (
+            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 backdrop-blur-sm">
+                <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Are you sure?</h3>
+                    <p className="text-sm text-gray-600 mb-6">This action cannot be undone.</p>
+                    <div className="flex justify-end gap-3">
+                        <button onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold text-sm">Cancel</button>
+                        <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm">Delete Task</button>
                     </div>
                 </div>
-            );
-        };
+            </div>
+        );
+        
+        const LoadingSpinner = () => (
+            <div className="flex items-center justify-center h-screen">
+                <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        );
 
         // --- Main App Component ---
         const App = () => {
@@ -149,10 +203,24 @@
             const [error, setError] = useState(null);
             const [isBreakingDown, setIsBreakingDown] = useState(null);
             const [taskToDelete, setTaskToDelete] = useState(null);
+            const [theme, setTheme] = useState('gradient');
 
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'kanban-app-default';
             const COLUMN_ORDER = ['todo', 'inProgress', 'done'];
 
+            // --- Theme Management ---
+            useEffect(() => {
+                const savedTheme = localStorage.getItem('kanban-theme') || 'gradient';
+                setTheme(savedTheme);
+            }, []);
+
+            useEffect(() => {
+                document.body.className = '';
+                document.body.classList.add(`theme-${theme}`);
+                localStorage.setItem('kanban-theme', theme);
+            }, [theme]);
+
+            // --- Firebase & Data Management ---
             useEffect(() => {
                 const firebaseCheckInterval = setInterval(() => {
                     if (window.firebase) {
@@ -161,7 +229,7 @@
                             const { initializeApp, getAuth, getFirestore, onAuthStateChanged, signInWithCustomToken, signInAnonymously } = window.firebase;
                             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
                             if (Object.keys(firebaseConfig).length === 0) {
-                                setError("Firebase config not available. Persistence is disabled.");
+                                setError("Offline mode: Data will not be saved.");
                                 setIsAuthReady(true); return;
                             }
                             const app = initializeApp(firebaseConfig);
@@ -177,11 +245,7 @@
                                 }
                                 setIsAuthReady(true);
                             });
-                        } catch (err) {
-                            console.error("Firebase init error:", err);
-                            setError("Could not connect to the database.");
-                            setIsAuthReady(true);
-                        }
+                        } catch (err) { console.error("Firebase init error:", err); setError("Could not connect to database."); setIsAuthReady(true); }
                     }
                 }, 100);
             }, []);
@@ -189,28 +253,16 @@
             useEffect(() => {
                 if (!isAuthReady) return;
                 if (!db || !userId) {
-                    setColumns({
-                        todo: { name: 'To Do', items: [{ id: '1', content: 'Design a new landing page' }] },
-                        inProgress: { name: 'In Progress', items: [] },
-                        done: { name: 'Done', items: [] },
-                    });
-                    setIsLoading(false);
-                    return;
+                    setColumns({ todo: { name: 'To Do', items: [{ id: '1', content: 'Brainstorm new feature ideas' }] }, inProgress: { name: 'In Progress', items: [] }, done: { name: 'Done', items: [] } });
+                    setIsLoading(false); return;
                 }
                 const { doc, onSnapshot } = window.firebase;
                 const docRef = doc(db, 'artifacts', appId, 'users', userId);
                 const unsubscribe = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists() && docSnap.data().columns) {
-                        setColumns(docSnap.data().columns);
-                    } else {
-                        initializeDefaultBoard();
-                    }
+                    if (docSnap.exists() && docSnap.data().columns) { setColumns(docSnap.data().columns); } 
+                    else { initializeDefaultBoard(); }
                     setIsLoading(false);
-                }, (err) => {
-                    console.error("Firestore error:", err);
-                    setError("Failed to sync data.");
-                    setIsLoading(false);
-                });
+                }, (err) => { console.error("Firestore error:", err); setError("Failed to sync data."); setIsLoading(false); });
                 return () => unsubscribe();
             }, [isAuthReady, db, userId, appId]);
 
@@ -219,28 +271,34 @@
                 try {
                     const { doc, setDoc } = window.firebase;
                     await setDoc(doc(db, 'artifacts', appId, 'users', userId), { columns: newColumns });
-                } catch (err) {
-                    console.error("Error updating Firestore:", err);
-                    setError("Failed to save changes.");
-                }
+                } catch (err) { console.error("Error updating Firestore:", err); setError("Failed to save changes."); }
             }, [db, userId, appId]);
 
             const initializeDefaultBoard = () => {
-                const defaultColumns = {
-                    todo: { name: 'To Do', items: [{ id: '1', content: 'Design a new landing page' }] },
-                    inProgress: { name: 'In Progress', items: [] },
-                    done: { name: 'Done', items: [] },
-                };
+                const defaultColumns = { todo: { name: 'To Do', items: [{ id: '1', content: 'Brainstorm new feature ideas' }] }, inProgress: { name: 'In Progress', items: [] }, done: { name: 'Done', items: [] } };
                 setColumns(defaultColumns);
                 updateFirestoreBoard(defaultColumns);
             };
 
             const handleBreakdownTask = async (task, sourceColumnId) => {
-                setIsBreakingDown(task.id);
-                setError(null);
+                const content = task.content.trim();
+
+                if (content.length < 8 || content.split(' ').length < 2) {
+                    setError("✨ Please provide a more descriptive task to break down.");
+                    return;
+                }
+                
+                const profanityList = ['darn', 'heck', 'shoot'];
+                const hasProfanity = profanityList.some(word => content.toLowerCase().includes(word));
+                if (hasProfanity) {
+                    setError("✨ This task cannot be processed due to inappropriate language.");
+                    return;
+                }
+
+                setIsBreakingDown(task.id); setError(null);
                 const prompt = `You are a project management assistant. Break down this task into smaller, actionable sub-tasks: "${task.content}". Respond as a JSON object: {"subtasks": ["sub-task 1", "sub-task 2"]}`;
                 const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } };
-                const apiKey = "";
+                const apiKey = "AIzaSyBd5Nqt9n5RSbPBzDTAZ1LCBcIw52i4Zkg";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                 try {
                     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -248,21 +306,17 @@
                     const result = await response.json();
                     const subtasks = JSON.parse(result.candidates[0].content.parts[0].text).subtasks;
                     if (!subtasks?.length) throw new Error("AI did not provide sub-tasks.");
-                    
-                    const newTasks = subtasks.map(content => ({ id: crypto.randomUUID(), content }));
+                    const newTasks = subtasks.map(t => ({ id: crypto.randomUUID(), content: t }));
                     let newColumns = JSON.parse(JSON.stringify(columns));
                     newColumns.todo.items = [...newTasks, ...newColumns.todo.items];
-                    const sourceCol = newColumns[sourceColumnId];
-                    sourceCol.items = sourceCol.items.filter(t => t.id !== task.id);
+                    newColumns[sourceColumnId].items = newColumns[sourceColumnId].items.filter(t => t.id !== task.id);
                     newColumns.done.items.unshift({ ...task, content: `[Broken Down] ${task.content}` });
-                    setColumns(newColumns);
-                    updateFirestoreBoard(newColumns);
+                    
+                    setColumns(newColumns); 
+                    updateFirestoreBoard(newColumns); 
                     setShowConfetti(true);
-                } catch (err) {
-                    setError(`✨ AI assistant failed: ${err.message}`);
-                } finally {
-                    setIsBreakingDown(null);
-                }
+                } catch (err) { setError(`✨ AI assistant failed: ${err.message}`); } 
+                finally { setIsBreakingDown(null); }
             };
 
             const handleAddTask = (e) => {
@@ -270,9 +324,7 @@
                 if (!newTaskContent.trim() || !columns) return;
                 const newTask = { id: crypto.randomUUID(), content: newTaskContent.trim() };
                 const newColumns = { ...columns, todo: { ...columns.todo, items: [newTask, ...columns.todo.items] } };
-                setColumns(newColumns);
-                updateFirestoreBoard(newColumns);
-                setNewTaskContent('');
+                setColumns(newColumns); updateFirestoreBoard(newColumns); setNewTaskContent('');
             };
             
             const handleConfirmDelete = () => {
@@ -280,86 +332,112 @@
                 const { task, columnId } = taskToDelete;
                 let newColumns = JSON.parse(JSON.stringify(columns));
                 newColumns[columnId].items = newColumns[columnId].items.filter(t => t.id !== task.id);
-                setColumns(newColumns);
-                updateFirestoreBoard(newColumns);
-                setTaskToDelete(null);
+                setColumns(newColumns); updateFirestoreBoard(newColumns); setTaskToDelete(null);
             };
 
-            const handleDragStart = (e, task, sourceColumnId) => { e.dataTransfer.setData('task', JSON.stringify(task)); e.dataTransfer.setData('sourceColumnId', sourceColumnId); e.currentTarget.classList.add('opacity-50'); };
-            const handleDragEnd = (e) => e.currentTarget.classList.remove('opacity-50');
+            const handleDragStart = (e, task, sourceColumnId) => { e.dataTransfer.setData('task', JSON.stringify(task)); e.dataTransfer.setData('sourceColumnId', sourceColumnId); e.currentTarget.classList.add('opacity-50', 'scale-95'); };
+            const handleDragEnd = (e) => e.currentTarget.classList.remove('opacity-50', 'scale-95');
             const handleDragOver = (e) => e.preventDefault();
 
             const handleDrop = (e, destColumnId) => {
-                e.preventDefault();
-                if (!columns) return;
+                e.preventDefault(); if (!columns) return;
                 const task = JSON.parse(e.dataTransfer.getData('task'));
                 const sourceColumnId = e.dataTransfer.getData('sourceColumnId');
                 if (sourceColumnId === destColumnId) return;
                 let newColumns = JSON.parse(JSON.stringify(columns));
                 newColumns[sourceColumnId].items = newColumns[sourceColumnId].items.filter(t => t.id !== task.id);
                 newColumns[destColumnId].items.unshift(task);
-                setColumns(newColumns);
-                updateFirestoreBoard(newColumns);
+                setColumns(newColumns); updateFirestoreBoard(newColumns);
                 if (destColumnId === 'done') setShowConfetti(true);
             };
 
-            if (isLoading) {
-                return <div className="flex items-center justify-center h-screen text-2xl font-semibold text-gray-400">Loading your board...</div>;
-            }
+            const handleConfettiFinish = useCallback(() => {
+                setShowConfetti(false);
+            }, []);
+
+            if (isLoading) return <LoadingSpinner />;
 
             return (
-                <div className="min-h-screen text-white p-4 sm:p-6 lg:p-8">
-                    {showConfetti && <Confetti onFinish={() => setShowConfetti(false)} />}
-                    {taskToDelete && <ConfirmationModal message="Are you sure you want to delete this task?" onConfirm={handleConfirmDelete} onCancel={() => setTaskToDelete(null)} />}
+                <div className="min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col">
+                    {showConfetti && <Confetti onFinish={handleConfettiFinish} />}
+                    {taskToDelete && <ConfirmationModal onConfirm={handleConfirmDelete} onCancel={() => setTaskToDelete(null)} />}
                     
-                    <header className="text-center mb-10">
-                        <h1 className="text-4xl sm:text-5xl font-bold text-white">AI Kanban Board</h1>
-                        <p className="text-gray-400 mt-2">Organize, Prioritize, and Execute with AI Assistance</p>
-                        {error && <div className="mt-4 max-w-xl mx-auto text-red-400 bg-red-900/50 p-3 rounded-lg">{error}</div>}
-                        {userId && <div className="mt-2 text-xs text-gray-500">ID: {userId}</div>}
+                    <header className="max-w-7xl mx-auto mb-10 flex justify-between items-center w-full">
+                        <h1 className="header-title text-3xl font-bold">Kanban Board</h1>
+                        <div className="flex items-center gap-2 p-1 bg-gray-200/50 rounded-lg">
+                            <button onClick={() => setTheme('light')} className={`theme-btn p-1.5 rounded-md ${theme === 'light' ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.95l.707-.707a1 1 0 10-1.414-1.414l-.707.707a1 1 0 001.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" /></svg>
+                            </button>
+                             <button onClick={() => setTheme('dark')} className={`theme-btn p-1.5 rounded-md ${theme === 'dark' ? 'bg-gray-700 shadow-sm' : 'hover:bg-gray-500/20'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-300" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+                            </button>
+                             <button onClick={() => setTheme('gradient')} className={`theme-btn p-1.5 rounded-md ${theme === 'gradient' ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}>
+                                 <span className="font-bold text-gray-700 text-lg">✨</span>
+                            </button>
+                        </div>
                     </header>
 
-                    <main>
-                        <div className="max-w-xl mx-auto mb-10">
-                            <form onSubmit={handleAddTask} className="flex gap-2 p-1.5 bg-gray-900/50 rounded-lg border border-gray-700">
-                                <input type="text" value={newTaskContent} onChange={(e) => setNewTaskContent(e.target.value)} placeholder="Add a new task..." className="flex-grow p-3 bg-transparent text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
-                                <button type="submit" className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500 transition-transform transform hover:scale-105">Add Task</button>
-                            </form>
-                        </div>
+                    <main className="max-w-7xl mx-auto w-full flex-grow">
+                         <form onSubmit={handleAddTask} className="mb-8 max-w-xl mx-auto">
+                            <div className="relative">
+                                <input type="text" value={newTaskContent} onChange={(e) => setNewTaskContent(e.target.value)} placeholder="Add a new task..." className="add-task-input w-full p-4 pr-16 text-md border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
+                                <button type="submit" className="absolute top-1/2 right-3 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                                </button>
+                            </div>
+                        </form>
+                        {error && <div className="max-w-xl mx-auto mb-4 text-center text-sm text-red-600 bg-red-100 p-3 rounded-xl">{error}</div>}
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {columns && COLUMN_ORDER.map(columnId => {
                                 const column = columns[columnId];
                                 if (!column) return null;
                                 return (
-                                    <div key={columnId} className="column rounded-xl p-4 flex flex-col" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, columnId)}>
-                                        <h2 className="text-lg font-semibold mb-4 text-gray-300 pb-2 border-b-2 border-gray-700 flex justify-between items-center">
+                                    <div key={columnId} className="column rounded-xl p-4 flex flex-col">
+                                        <h2 className="column-title text-md font-semibold mb-4 flex justify-between items-center">
                                             <span>{column.name}</span>
-                                            <span className="text-sm font-medium bg-gray-600 text-gray-200 rounded-full px-2.5 py-0.5">{column.items.length}</span>
+                                            <span className="text-sm font-medium bg-gray-300 text-gray-600 rounded-full px-2 py-0.5">{column.items.length}</span>
                                         </h2>
-                                        <div className="flex-grow min-h-[200px] space-y-4">
+                                        <div className="flex-grow min-h-[200px] space-y-3" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, columnId)}>
                                             {column.items.map(task => (
-                                                <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task, columnId)} onDragEnd={handleDragEnd} className="task-card bg-gray-800 p-4 rounded-lg shadow-md cursor-grab active:cursor-grabbing border border-gray-700">
-                                                    <div className="flex justify-between items-start">
-                                                        <p className="text-gray-200 pr-4">{task.content}</p>
-                                                        <button onClick={() => setTaskToDelete({task, columnId})} className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                                <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task, columnId)} onDragEnd={handleDragEnd} className="task-card p-4 rounded-lg cursor-grab active:cursor-grabbing">
+                                                    <p className="task-text text-sm mb-3">{task.content}</p>
+                                                    <div className="actions flex items-center justify-end gap-2">
+                                                        {(columnId !== 'done') && (
+                                                            <button onClick={() => handleBreakdownTask(task, columnId)} disabled={isBreakingDown} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:text-gray-300">
+                                                                {isBreakingDown === task.id ? <div className="gemini-btn-spinner"></div> : <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>}
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => setTaskToDelete({task, columnId})} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-md transition-colors">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                                                         </button>
                                                     </div>
-                                                    {(columnId === 'todo' || columnId === 'inProgress') && (
-                                                        <button onClick={() => handleBreakdownTask(task, columnId)} disabled={isBreakingDown} className="mt-4 flex items-center justify-center gap-2 w-full text-sm px-3 py-1.5 bg-indigo-600/80 text-white rounded-md hover:bg-indigo-700/80 transition-all disabled:bg-indigo-500/50 disabled:cursor-not-allowed">
-                                                            {isBreakingDown === task.id ? <><div className="gemini-btn-spinner"></div><span>Thinking...</span></> : <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg><span>Breakdown Task</span></>}
-                                                        </button>
-                                                    )}
                                                 </div>
                                             ))}
-                                            {column.items.length === 0 && <div className="flex items-center justify-center h-full text-gray-500 italic border-2 border-dashed border-gray-700 rounded-lg">Drop tasks here</div>}
+                                            {column.items.length === 0 && <div className="empty-column flex items-center justify-center h-full text-sm italic border-2 border-dashed rounded-lg">Drop tasks here</div>}
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
                     </main>
+                    <footer className="max-w-7xl mx-auto mt-12 text-center py-6 border-t border-gray-200/50">
+                        <p className="footer-text text-sm">
+                            Made with ❤️ by Rajat Kumar
+                        </p>
+                        <div className="flex justify-center gap-6 mt-4">
+                            <a href="https://www.linkedin.com/in/rajatkumar7/" target="_blank" rel="noopener noreferrer" className="social-icon transition-colors">
+                                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                                </svg>
+                            </a>
+                            <a href="https://github.com/rajatkumar1011" target="_blank" rel="noopener noreferrer" className="social-icon transition-colors">
+                                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path fillRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.492.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clipRule="evenodd" />
+                                </svg>
+                            </a>
+                        </div>
+                    </footer>
                 </div>
             );
         };
