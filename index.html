@@ -168,19 +168,6 @@
             }, [onFinish]);
             return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full z-50 pointer-events-none" />;
         };
-
-        const ConfirmationModal = ({ onConfirm, onCancel }) => (
-            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 backdrop-blur-sm">
-                <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Are you sure?</h3>
-                    <p className="text-sm text-gray-600 mb-6">This action cannot be undone.</p>
-                    <div className="flex justify-end gap-3">
-                        <button onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold text-sm">Cancel</button>
-                        <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm">Delete Task</button>
-                    </div>
-                </div>
-            </div>
-        );
         
         const LoadingSpinner = () => (
             <div className="flex items-center justify-center h-screen">
@@ -203,7 +190,7 @@
             const [error, setError] = useState(null);
             const [disclaimer, setDisclaimer] = useState(null);
             const [isBreakingDown, setIsBreakingDown] = useState(null);
-            const [taskToDelete, setTaskToDelete] = useState(null);
+            const [editingTask, setEditingTask] = useState(null); // { id: string, content: string }
             const [theme, setTheme] = useState('gradient');
 
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'kanban-app-default';
@@ -333,12 +320,37 @@
                 setColumns(newColumns); updateFirestoreBoard(newColumns); setNewTaskContent('');
             };
             
-            const handleConfirmDelete = () => {
-                if (!taskToDelete) return;
-                const { task, columnId } = taskToDelete;
+            const handleDeleteTask = (task, columnId) => {
                 let newColumns = JSON.parse(JSON.stringify(columns));
                 newColumns[columnId].items = newColumns[columnId].items.filter(t => t.id !== task.id);
-                setColumns(newColumns); updateFirestoreBoard(newColumns); setTaskToDelete(null);
+                setColumns(newColumns);
+                updateFirestoreBoard(newColumns);
+            };
+
+            const handleUpdateTask = () => {
+                if (!editingTask || !editingTask.content.trim()) {
+                    setEditingTask(null);
+                    return;
+                }
+                let newColumns = JSON.parse(JSON.stringify(columns));
+                for (const columnId in newColumns) {
+                    const taskIndex = newColumns[columnId].items.findIndex(t => t.id === editingTask.id);
+                    if (taskIndex > -1) {
+                        newColumns[columnId].items[taskIndex].content = editingTask.content;
+                        break;
+                    }
+                }
+                setColumns(newColumns);
+                updateFirestoreBoard(newColumns);
+                setEditingTask(null);
+            };
+
+            const handleEditKeyDown = (e) => {
+                if (e.key === 'Enter') {
+                    handleUpdateTask();
+                } else if (e.key === 'Escape') {
+                    setEditingTask(null);
+                }
             };
 
             const handleDragStart = (e, task, sourceColumnId) => { e.dataTransfer.setData('task', JSON.stringify(task)); e.dataTransfer.setData('sourceColumnId', sourceColumnId); e.currentTarget.classList.add('opacity-50', 'scale-95'); };
@@ -366,7 +378,6 @@
             return (
                 <div className="min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col">
                     {showConfetti && <Confetti onFinish={handleConfettiFinish} />}
-                    {taskToDelete && <ConfirmationModal onConfirm={handleConfirmDelete} onCancel={() => setTaskToDelete(null)} />}
                     
                     <header className="max-w-7xl mx-auto mb-10 flex justify-between items-center w-full">
                         <h1 className="header-title text-3xl font-black uppercase tracking-widest">KANBAN</h1>
@@ -403,7 +414,17 @@
                                 </button>
                             </div>
                         )}
-                        {error && <div className="max-w-xl mx-auto mb-4 text-center text-sm text-red-600 bg-red-100 p-3 rounded-xl">{error}</div>}
+                        {error && (
+                            <div className="relative max-w-xl mx-auto mb-4 text-center text-sm text-red-600 bg-red-100 p-3 rounded-xl">
+                                <span>{error}</span>
+                                <button 
+                                    onClick={() => setError(null)} 
+                                    className="absolute top-1/2 right-2 -translate-y-1/2 p-1 rounded-full hover:bg-red-200 transition-colors"
+                                >
+                                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                </button>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {columns && COLUMN_ORDER.map(columnId => {
@@ -418,14 +439,29 @@
                                         <div className="flex-grow min-h-[200px] space-y-3" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, columnId)}>
                                             {column.items.map(task => (
                                                 <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task, columnId)} onDragEnd={handleDragEnd} className="task-card p-4 rounded-lg cursor-grab active:cursor-grabbing">
-                                                    <p className="task-text text-sm mb-3">{task.content}</p>
+                                                    {editingTask?.id === task.id ? (
+                                                        <input
+                                                            type="text"
+                                                            value={editingTask.content}
+                                                            onChange={(e) => setEditingTask({ ...editingTask, content: e.target.value })}
+                                                            onBlur={handleUpdateTask}
+                                                            onKeyDown={handleEditKeyDown}
+                                                            className="task-text text-sm w-full bg-transparent focus:outline-none"
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <p className="task-text text-sm mb-3">{task.content}</p>
+                                                    )}
                                                     <div className="actions flex items-center justify-end gap-2">
                                                         {(columnId !== 'done') && (
                                                             <button onClick={() => handleBreakdownTask(task, columnId)} disabled={isBreakingDown} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:text-gray-300">
                                                                 {isBreakingDown === task.id ? <div className="gemini-btn-spinner"></div> : <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>}
                                                             </button>
                                                         )}
-                                                        <button onClick={() => setTaskToDelete({task, columnId})} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-md transition-colors">
+                                                        <button onClick={() => setEditingTask({ id: task.id, content: task.content })} className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-md transition-colors">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                                                        </button>
+                                                        <button onClick={() => handleDeleteTask(task, columnId)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-md transition-colors">
                                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                                                         </button>
                                                     </div>
