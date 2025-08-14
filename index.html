@@ -201,6 +201,7 @@
             const [isLoading, setIsLoading] = useState(true);
             const [showConfetti, setShowConfetti] = useState(false);
             const [error, setError] = useState(null);
+            const [disclaimer, setDisclaimer] = useState(null);
             const [isBreakingDown, setIsBreakingDown] = useState(null);
             const [taskToDelete, setTaskToDelete] = useState(null);
             const [theme, setTheme] = useState('gradient');
@@ -229,7 +230,7 @@
                             const { initializeApp, getAuth, getFirestore, onAuthStateChanged, signInWithCustomToken, signInAnonymously } = window.firebase;
                             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
                             if (Object.keys(firebaseConfig).length === 0) {
-                                setError("Pin this Webpage and Don't Refresh!");
+                                setDisclaimer("Pin this Webpage and Don't Refresh!");
                                 setIsAuthReady(true); return;
                             }
                             const app = initializeApp(firebaseConfig);
@@ -307,7 +308,6 @@
                     let subtasks = JSON.parse(result.candidates[0].content.parts[0].text).subtasks;
                     if (!subtasks?.length) throw new Error("AI did not provide sub-tasks.");
                     
-                    // Enforce the 5-task limit as a safeguard
                     if (subtasks.length > 5) {
                         subtasks = subtasks.slice(0, 5);
                     }
@@ -392,6 +392,17 @@
                                 </button>
                             </div>
                         </form>
+                        {disclaimer && (
+                            <div className="relative max-w-xl mx-auto mb-4 text-center text-sm text-yellow-800 bg-yellow-100 dark:bg-yellow-900/50 dark:text-yellow-300 p-3 rounded-xl">
+                                <span>{disclaimer}</span>
+                                <button 
+                                    onClick={() => setDisclaimer(null)} 
+                                    className="absolute top-1/2 right-2 -translate-y-1/2 p-1 rounded-full hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors"
+                                >
+                                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                </button>
+                            </div>
+                        )}
                         {error && <div className="max-w-xl mx-auto mb-4 text-center text-sm text-red-600 bg-red-100 p-3 rounded-xl">{error}</div>}
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
